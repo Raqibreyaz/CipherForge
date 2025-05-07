@@ -14,13 +14,13 @@ enum class Action
 
 struct Task
 {
-    std::string filePath;
     std::fstream fStream;
     Action action;
+    std::string filePath;
     // & can't be used with a stream so we use && here
     Task(std::fstream &&stream, Action act, std::string file_path) : fStream(std::move(stream)), action(act), filePath(file_path)
     {
-        std::cout << "New Task Created" << std::endl;
+        // std::cout << "New Task Created" << std::endl;
     }
 
     // will return "filePath,ENCRYPT/DECRYPT"
@@ -41,7 +41,7 @@ struct Task
         {
             Action action = actionStr == "ENCRYPT" ? Action::ENCRYPT : Action::DECRYPT;
             IO io(filePath);
-            std::fstream fstream = std::move(io.getFileStream());
+            std::fstream fstream = io.getFileStream();
             if (fstream.is_open())
             {
                 return Task(std::move(fstream), action, filePath);

@@ -1,3 +1,8 @@
 .env
 *.o
 x.cpp
+generateFiles.cpp
+cryption
+encrypt_decrypt
+generateFiles
+test

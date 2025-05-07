@@ -1,0 +1,22 @@
+Task: 
+- filepath
+- fstream
+- action
+- toString -> "filePath,ENCRYPT/DECRYPT"
+- fromString
+
+IO:
+- fileStream
+- getFileStream -> moves ownership of fileStream
+
+Cryption:
+- executeCryption(string task)
+
+ReadEnv:
+- getEnv -> content of .env
+
+
+. loop on all files of folder
+. for each file create a Task 
+. add task to task queue
+. for each task a sleeping thread will wake up and execute it
