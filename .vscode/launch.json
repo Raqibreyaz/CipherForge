@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "Debug encrypt_decrypt",
-      "type": "cppdbg",
+      "type": "cppdbg ",
       "request": "launch",
       "program": "${workspaceFolder}/encrypt_decrypt",
       "args": [],

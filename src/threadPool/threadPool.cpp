@@ -1,12 +1,11 @@
 #include "threadPool.hpp"
+#include <mutex>
 
-ThreadPool::ThreadPool() {
+ThreadPool::ThreadPool() : stop(false) {
   // add worker threads
   for (int i = 0; i < THREAD_COUNT; i++) {
     this->workers.emplace_back([this]() { this->workerLoop(); });
   }
-
-  this->stop = false;
 }
 
 // will add the task to the task queue
@@ -23,8 +22,6 @@ void ThreadPool::addTask(const std::function<void()> &task) {
 
 // will return the first task
 std::function<void()> ThreadPool::popTask() {
-  std::lock_guard<std::mutex> lock(this->mtx);
-
   if (this->taskQueue.empty())
     return nullptr;
 
@@ -56,13 +53,10 @@ void ThreadPool::workerLoop() {
         // std::cout << "terminating thread" << std::endl;
         break;
       }
-
-      // we dont need lock anymore
-      lock.unlock();
-
       // take the front task
       task = this->popTask();
     }
+
     // execute the task
     if (task) {
       task();
@@ -87,4 +81,7 @@ ThreadPool::~ThreadPool() {
   }
 }
 
-size_t ThreadPool::getTotalTasks() { return this->taskQueue.size(); }
+size_t ThreadPool::getTotalTasks() {
+  std::lock_guard<std::mutex> lock(this->mtx);
+  return this->taskQueue.size();
+}

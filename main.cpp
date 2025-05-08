@@ -1,10 +1,13 @@
+#include "./src/app/encryptDecrypt/Cryption.hpp"
+#include "./src/app/fileHandling/IO.hpp"
+#include "./src/app/processes/ProcessManagement.hpp"
+#include "./src/threadPool/threadPool.hpp"
+#include "src/app/processes/Task.hpp"
+#include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <iostream>
 #include <memory>
-// #include "./src/app/processes/ProcessManagement.hpp"
-#include "./src/app/encryptDecrypt/Cryption.hpp"
-#include "./src/app/processes/Task.hpp"
-#include "./src/threadPool/threadPool.hpp"
 
 namespace fs = std::filesystem;
 
@@ -19,50 +22,91 @@ int main(int argc, char const *argv[]) {
   std::cout << "Enter the action (ENCRYPT/DECRYPT): " << std::endl;
   std::getline(std::cin, action);
 
-  try {
-    // first check if it exists and is a directory
-    if (fs::exists(directory) && fs::is_directory(directory)) {
+  // create an instance of the thread pool
+  ThreadPool pool;
 
-      // create an instance of the thread pool
-      ThreadPool pool;
+  ProcessManagement pm;
 
-      // loop over all the files inside that folder
-      for (const auto &entry : fs::recursive_directory_iterator(directory)) {
-        if (entry.is_regular_file()) {
-          //  take the filepath
-          std::string filePath = entry.path().string();
+  auto start = std::chrono::high_resolution_clock::now();
 
-          std::clog << "file: " << filePath << std::endl;
+  if (action == "DECRYPT") {
+    try {
+      // first check if it exists and is a directory
+      if (fs::exists(directory) && fs::is_directory(directory)) {
 
-          // io opens/closes that file and gives file stream
-          IO io(filePath);
+        // loop over all the files inside that folder
+        for (const auto &entry : fs::recursive_directory_iterator(directory)) {
+          if (entry.is_regular_file()) {
+            //  take the filepath
+            std::string filePath = entry.path().string();
 
-          // take the ownership of the file stream
-          std::fstream fstream = io.getFileStream();
+            // io opens/closes that file and gives file stream
+            IO io(filePath);
 
-          // take the action to do with files
-          Action taskAction =
-              (action == "ENCRYPT" ? Action::ENCRYPT : Action::DECRYPT);
+            // take the ownership of the file stream
+            std::fstream fstream = io.getFileStream();
 
-          if (fstream.is_open()) {
+            if (fstream.is_open()) {
+              std::unique_ptr<Task> task = std::make_unique<Task>(
+                  std::move(fstream), Action::DECRYPT, filePath);
 
-            auto task = std::make_shared<Task>(std::move(fstream), taskAction,
-                                               filePath);
-
-            pool.addTask(
-                [&task]() mutable { executeCryption(task->toString()); });
-
-          } else {
-            std::cout << "Unable to open the file: " << filePath << std::endl;
+              pm.submitToQueue(std::move(task));
+            } else {
+              std::cout << "Unable to open the file: " << filePath << std::endl;
+            }
           }
         }
+      } else {
+        std::cout << "Invalid directory path: " << std::endl;
       }
-    } else {
-      std::cout << "Invalid directory path: " << std::endl;
+
+      pm.executeTasks();
+    } catch (const fs::filesystem_error &e) {
+      std::cout << "FileSystem error: " << e.what() << std::endl;
     }
-  } catch (const fs::filesystem_error &e) {
-    std::cout << "FileSystem error: " << e.what() << std::endl;
+  } else {
+    try {
+      // first check if it exists and is a directory
+      if (fs::exists(directory) && fs::is_directory(directory)) {
+
+        // loop over all the files inside that folder
+        for (const auto &entry : fs::recursive_directory_iterator(directory)) {
+          if (entry.is_regular_file()) {
+            //  take the filepath
+            std::string filePath = entry.path().string();
+
+            // io opens/closes that file and gives file stream
+            IO io(filePath);
+
+            // take the ownership of the file stream
+            std::fstream fstream = io.getFileStream();
+
+            if (fstream.is_open()) {
+
+              std::string taskData = filePath + "::" + action;
+
+              pool.addTask([taskData]() mutable { executeCryption(taskData); });
+
+            } else {
+              std::cout << "Unable to open the file: " << filePath << std::endl;
+            }
+          }
+        }
+      } else {
+        std::cout << "Invalid directory path: " << std::endl;
+      }
+    } catch (const fs::filesystem_error &e) {
+      std::cout << "FileSystem error: " << e.what() << std::endl;
+    }
   }
+
+  auto end = std::chrono::high_resolution_clock::now();
+
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+  std::clog << "Took " << duration.count() << " ms" << " for " << action
+            << std ::endl;
 
   return 0;
 }
